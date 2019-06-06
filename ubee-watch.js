@@ -162,34 +162,44 @@ io.on("connection", socket => {
         watchers[socket.id][ambient] = {
             lookers: {}
         };
-        callback({});
+        !callback || callback({});
     });
 
     socket.on("look:login", (key, ambient, callback) => {
-        const watch = random_select(
-            Object.entries(watchers).filter(([watch_id, watcher]) => {
-                return !!watcher[ambient] && io.sockets.connected[watch_id];
-            }).map(pair => pair[0])
-        );
-        if (!watch) {
-            callback({ error: `not watchers` });
-            return;
-        }
-        console.log("look:login", socket.id, watch, ambient);
-        ambient_create(ambient, socket.id, watch, result => {
-            if (result.error) {
-                callback(result);
+        const again = (intent = 0) => {
+            if (intent >= 30) {
+                !callback || callback({ error: `max intents exceed` });
                 return;
             }
-            const token = result.token;
-            lookers[socket.id] = lookers[socket.id] || {};
-            lookers[socket.id][ambient] = {
-                watch,
-                token
-            };
-            watchers[watch][ambient].lookers[socket.id] = token;
-            callback({ token });
-        });
+
+            const watch = random_select(
+                Object.entries(watchers).filter(([watch_id, watcher]) => {
+                    return !!watcher[ambient] && io.sockets.connected[watch_id];
+                }).map(pair => pair[0])
+            );
+            if (!watch) {
+                setTimeout(() => {
+                    again(intent + 1);
+                }, 100);
+                return;
+            }
+            console.log("look:login", socket.id, watch, ambient);
+            ambient_create(ambient, socket.id, watch, result => {
+                if (result.error) {
+                    !callback || callback(result);
+                    return;
+                }
+                const token = result.token;
+                lookers[socket.id] = lookers[socket.id] || {};
+                lookers[socket.id][ambient] = {
+                    watch,
+                    token
+                };
+                watchers[watch][ambient].lookers[socket.id] = token;
+                !callback || callback({ token });
+            });
+        };
+        again();
     });
 });
 
