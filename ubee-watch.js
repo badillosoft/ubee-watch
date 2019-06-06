@@ -59,7 +59,7 @@ function ambient_state(token, code, protocol, callback) {
         at: new Date(),
     };
     const socket_source = io.sockets.connected[ambient.source];
-    !socket_source || socket_source.emit("ambient:state", ambient.name, ambient.state);
+    !socket_source || socket_source.emit("ambient:state", ambient.name, ambient.state.code, ambient.state.protocol);
     const socket_target = io.sockets.connected[ambient.target];
     !socket_target || socket_target.emit("ambient:state", token, ambient.name, ambient.state.code, ambient.state.protocol);
     !callback || callback({
